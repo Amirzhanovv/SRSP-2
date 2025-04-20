@@ -1,0 +1,100 @@
+--Audit лог кестесі
+CREATE TABLE IF NOT EXISTS audit_log (
+  log_id       SERIAL PRIMARY KEY,
+  action_time  TIMESTAMP NOT NULL DEFAULT NOW(),
+  action_descr TEXT
+);
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--1 Жүйелік DDL-триггер
+CREATE OR REPLACE FUNCTION log_ddl() RETURNS event_trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO audit_log(action_descr)
+  VALUES ('DDL: ' || current_query());
+END;
+$$;
+
+CREATE EVENT TRIGGER trg_ddl_after
+  ON ddl_command_end
+  EXECUTE PROCEDURE log_ddl();
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--2 AFTER INSERT ON users
+CREATE OR REPLACE FUNCTION trg_users_insert() RETURNS trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO audit_log(action_descr)
+  VALUES ('New user: ' || NEW.username);
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_users_insert
+  AFTER INSERT ON users
+  FOR EACH ROW
+  EXECUTE PROCEDURE trg_users_insert();
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--3 BEFORE UPDATE ON servers (статус өзгертсе)
+CREATE OR REPLACE FUNCTION trg_servers_status_upd() RETURNS trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO audit_log(action_descr)
+    VALUES (
+      'Server "'||OLD.name||'" status '
+      ||OLD.status||' → '||NEW.status
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_servers_status_upd
+  BEFORE UPDATE ON servers
+  FOR EACH ROW
+  EXECUTE PROCEDURE trg_servers_status_upd();
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--4 AFTER DELETE ON session_raw
+CREATE OR REPLACE FUNCTION trg_sessions_del() RETURNS trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO audit_log(action_descr)
+  VALUES ('Session '||OLD.session_id||' deleted');
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER trg_sessions_del
+  AFTER DELETE ON session_raw
+  FOR EACH ROW
+  EXECUTE PROCEDURE trg_sessions_del();
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--5 INSTEAD OF INSERT ON view v_user_summary
+CREATE OR REPLACE VIEW v_user_summary AS
+SELECT u.user_id,
+       u.username,
+       COUNT(s.session_id) AS session_count
+  FROM users u
+  LEFT JOIN session_raw s ON u.user_id = s.user_id
+ GROUP BY u.user_id, u.username;
+
+CREATE OR REPLACE FUNCTION trg_vus_io() RETURNS trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Cannot insert into summary view';
+END;
+$$;
+
+CREATE TRIGGER trg_vus_io
+  INSTEAD OF INSERT ON v_user_summary
+  FOR EACH ROW
+  EXECUTE PROCEDURE trg_vus_io();
