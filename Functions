@@ -1,0 +1,71 @@
+--1. get_session_count — қолданушы сеанстары саны
+CREATE OR REPLACE FUNCTION get_session_count(p_uid INT)
+    RETURNS INT
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cnt INT;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt
+    FROM session_raw
+    WHERE user_id = p_uid;
+    RETURN v_cnt;
+END;
+$$;
+
+SELECT get_session_count(1);
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+--2 get_server_traffic — серверге түскен жалпы трафик (MB)
+CREATE OR REPLACE FUNCTION get_server_traffic(p_srv_name TEXT)
+    RETURNS NUMERIC
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_sum NUMERIC;
+BEGIN
+    SELECT COALESCE(SUM(traffic_mb),0) INTO v_sum
+    FROM session_raw
+    WHERE server_name = p_srv_name;
+    RETURN v_sum;
+END;
+$$;
+
+SELECT get_server_traffic('srv01');
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+--3 get_last_backup — сервердегі соңғы резервтік көшіру уақыты
+CREATE OR REPLACE FUNCTION get_last_backup(p_server_id INT)
+    RETURNS TIMESTAMP
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_time TIMESTAMP;
+BEGIN
+    SELECT MAX(backup_time) INTO v_time
+    FROM backups
+    WHERE server_id = p_server_id;
+    RETURN v_time;
+END;
+$$;
+
+SELECT get_last_backup(1);
+
+------------------------------------------------------------------------------------------------------------------------------------------
+--4 get_user_role — қолданушының ролін алу
+CREATE OR REPLACE FUNCTION get_user_role(p_uid INT)
+    RETURNS TEXT
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_role_name TEXT;
+BEGIN
+    SELECT r.role_name INTO v_role_name
+    FROM roles r
+             JOIN users u ON u.role_id = r.role_id
+    WHERE u.user_id = p_uid;
+    RETURN v_role_name;
+END;
+$$;
+
+SELECT get_user_role(2);
