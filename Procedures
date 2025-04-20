@@ -1,0 +1,91 @@
+--1 Добавление нового пользователя
+CREATE OR REPLACE PROCEDURE add_user(
+    p_username       VARCHAR(100),
+    p_password_hash  TEXT,
+    p_role_id        INT,
+    p_first_name     VARCHAR(100),
+    p_last_name      VARCHAR(100),
+    p_email          VARCHAR(255),
+    p_phone_number   VARCHAR(20) DEFAULT NULL,
+    p_date_of_birth  DATE         DEFAULT NULL,
+    p_gender         VARCHAR(10)  DEFAULT NULL
+)
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_new_id INT;
+BEGIN
+    INSERT INTO users(
+        username, password_hash, role_id,
+        first_name, last_name, email,
+        phone_number, date_of_birth, gender
+    )
+    VALUES(
+              p_username, p_password_hash, p_role_id,
+              p_first_name, p_last_name, p_email,
+              p_phone_number, p_date_of_birth, p_gender
+          )
+    RETURNING user_id INTO v_new_id;
+
+    RAISE NOTICE 'Added user "%" with ID=%', p_username, v_new_id;
+END;
+$$;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+SELECT gen_salt('bf', 8);
+
+CALL add_user(
+        'a.seitkhankyzy',                          
+        crypt('My$tr0ngP@ss', gen_salt('bf')),           
+        1,                                               
+        'Aizhan',                                       
+        'Seitkhankyzy',                                  
+        'a.seitkhankyzy@example.com',                    
+        '+7 700 123 4567',                          
+        '2003-05-10'::date,                             
+        'Female'                                         
+     );
+select * from add_user();
+-----------------------------------------------------------------------------------------------------------------
+--2 Обновление статуса сервера
+CREATE OR REPLACE PROCEDURE update_server_status(
+    p_name   TEXT,
+    p_status TEXT
+)
+    LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE servers
+    SET status = p_status
+    WHERE name = p_name;
+
+    RAISE NOTICE 'Server "%" status set to %', p_name, p_status;
+END;
+$$;
+
+CALL update_server_status('srv02', 'maintenance');
+-------------------------------------------------------------------------------------------------------------------
+--3 Резервтік көшіруді жазу
+CREATE PROCEDURE log_backup(
+    p_sess INT,
+    p_date DATE
+)
+    LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO session_backups(session_id, backup_date)
+    VALUES(p_sess, p_date);
+    RAISE NOTICE 'Backup for session % on % logged', p_sess, p_date;
+END;
+$$;
+
+CALL log_backup(1, CURRENT_DATE);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
