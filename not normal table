@@ -1,0 +1,53 @@
+-- auto-generated definition
+create table session_raw
+(
+    session_id      serial
+        primary key,
+    user_fullname   text      not null,
+    user_role       text      not null,
+    server_name     text      not null,
+    server_location text      not null,
+    device_list     text,
+    session_start   timestamp not null,
+    session_end     timestamp,
+    traffic_mb      numeric,
+    backup_dates    text
+);
+
+alter table session_raw
+    owner to postgres;
+
+
+
+--Данные таблицы не нормального форма
+INSERT INTO session_raw (
+    user_fullname,
+    user_role,
+    server_name,
+    server_location,
+    device_list,
+    session_start,
+    session_end,
+    traffic_mb,
+    backup_dates
+) VALUES
+      -- 1
+      ('Aizhan Seitkhankyzy', 'admin',  'srv01', 'Almaty-DC',    'eth0,eth1',
+       '2025-04-18 08:00:00', '2025-04-18 09:30:00', 125.75, '2025-04-18,2025-04-19'),
+      -- 2
+      ('Nurbek Amirzhan',     'operator','srv02', 'Nur-Sultan-DC','eth0',
+       '2025-04-17 14:15:00', '2025-04-17 15:00:00',  75.20, '2025-04-17'),
+      -- 3
+      ('Gulzaya Yessim',      'operator','srv03', 'Shymkent-DC',  'wifi0,eth0',
+       '2025-04-16 10:00:00', '2025-04-16 11:45:00', 200.00, '2025-04-16,2025-04-17'),
+      -- 4
+      ('Diana Nurlan',        'user',    'srv01', 'Almaty-DC',    'eth0',
+       '2025-04-15 09:00:00', '2025-04-15 09:30:00',  50.50, '2025-04-15'),
+      -- 5
+      ('Aizhan Seitkhankyzy', 'admin',  'srv02', 'Nur-Sultan-DC','eth1',
+       '2025-04-14 16:00:00', '2025-04-14 17:15:00', 100.00, '2025-04-14'),
+      -- 6
+      ('Nurbek Amirzhan',     'operator','srv03', 'Shymkent-DC',  'wifi0',
+       '2025-04-13 11:00:00', '2025-04-13 12:30:00', 175.25, '2025-04-13,2025-04-14');
+
+SELECT * FROM session_raw ORDER BY session_id;
