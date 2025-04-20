@@ -1,0 +1,23 @@
+--1  серверді «maintenance» күйіне қою + «session_raw» тазалау
+
+BEGIN;
+
+  -- 1) Статус өзгерту
+  UPDATE servers
+     SET status = 'maintenance'
+   WHERE name = 'srv02';
+
+  -- 2) Сақтау нүктесі
+  SAVEPOINT sp_cleanup;
+
+  -- 3) Қажет емес session_raw жолдарын жою
+  DELETE FROM session_devices
+   WHERE session_id NOT IN (SELECT session_id FROM session_raw);
+
+  -- 4) Қате туындаса, оралу:
+  -- ROLLBACK TO SAVEPOINT sp_cleanup;
+
+COMMIT;
+
+ROLLBACK TO SAVEPOINT sp_cleanup;
+COMMIT;
