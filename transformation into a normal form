@@ -1,0 +1,60 @@
+--1NF
+CREATE TABLE session_devices (
+                                 session_id  INT     NOT NULL  REFERENCES session_raw(session_id),
+                                 device_name TEXT    NOT NULL,
+                                 PRIMARY KEY(session_id, device_name)
+);
+
+CREATE TABLE session_backups (
+                                 session_id  INT     NOT NULL  REFERENCES session_raw(session_id),
+                                 backup_date DATE    NOT NULL,
+                                 PRIMARY KEY(session_id, backup_date)
+);
+
+
+
+--2NF
+CREATE TABLE userss (
+                       user_id   SERIAL PRIMARY KEY,
+                       fullname  TEXT   NOT NULL,
+                       role      TEXT   NOT NULL
+);
+
+ALTER TABLE session_raw
+    ADD COLUMN user_id INT REFERENCES users(user_id);
+
+UPDATE session_raw
+SET user_id = u.user_id
+FROM userss u
+WHERE session_raw.user_fullname = u.fullname;
+
+ALTER TABLE session_raw
+    DROP COLUMN user_fullname,
+    DROP COLUMN user_role;
+
+
+
+--3NF
+CREATE TABLE serverss (
+                         server_name     TEXT PRIMARY KEY,
+                         server_location TEXT NOT NULL
+);
+
+ALTER TABLE session_raw
+    ADD CONSTRAINT fk_srv
+        FOREIGN KEY(server_name)
+            REFERENCES serverss(server_name);
+
+-- Егер session_raw ішінде болса, деректерді көшіру:
+-- INSERT INTO servers(server_name, server_location)
+-- SELECT DISTINCT server_name, server_location FROM session_raw;
+
+ALTER TABLE session_raw
+    DROP COLUMN server_location;
+
+
+
+--BCNF
+--users(user_id → fullname, role)
+--servers(server_name → server_location)
+--session_raw(session_id → user_id, server_name, session_start, session_end, traffic_mb)
